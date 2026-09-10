@@ -1,0 +1,24 @@
+{
+  "name": "client-s3-portal",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:api": "pnpm --filter @portal/api dev",
+    "dev:web": "pnpm --filter @portal/web dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm --filter @portal/api test",
+    "db:migrate": "pnpm --filter @portal/api db:migrate",
+    "db:seed": "pnpm --filter @portal/api db:seed",
+    "db:generate": "pnpm --filter @portal/api db:generate",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.9"
+}
