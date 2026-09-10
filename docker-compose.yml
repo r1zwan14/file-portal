@@ -1,13 +1,13 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: client-portal-mysql
+    container_name: file-portal-mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: client_portal
+      MYSQL_DATABASE: file_portal
       MYSQL_USER: portal
       MYSQL_PASSWORD: portal
     volumes:

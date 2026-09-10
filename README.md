@@ -1,4 +1,6 @@
-# Client S3 Portal
+# File Portal
+
+**Version:** [0.1.0](CHANGELOG.md#010---2026-09-10)
 
 Self-hosted, read-only S3 file portal for sharing files from an existing AWS S3 bucket with external clients.
 
@@ -106,6 +108,10 @@ pnpm test
 ```
 
 Critical authorization cases (client-a vs client-b/internal) are covered in `apps/api/src/services/authorization.service.test.ts`.
+
+## Versioning
+
+This project uses [Semantic Versioning](https://semver.org/). See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## License
 

@@ -37,9 +37,9 @@ export function LoginPage() {
       <Card className="w-full max-w-md">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-accent text-lg font-bold text-white">
-            CP
+            FP
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Client Portal</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">File Portal</h1>
           <p className="mt-1 text-sm text-ink-muted">Sign in to browse your shared files</p>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">

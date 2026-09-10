@@ -32,10 +32,10 @@ export async function registerPlugins(app: FastifyInstance) {
   await app.register(swagger, {
     openapi: {
       info: {
-        title: 'Client S3 Portal API',
+        title: 'File Portal API',
         description:
-          'Read-only S3 file portal for internal teams to share files with external clients.',
-        version: '1.0.0',
+          'Read-only S3 file portal for sharing files from an existing bucket with external clients.',
+        version: '0.1.0',
       },
       components: {
         securitySchemes: {

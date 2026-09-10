@@ -1,5 +1,6 @@
 {
-  "name": "client-s3-portal",
+  "name": "file-portal",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "pnpm -r --parallel run dev",

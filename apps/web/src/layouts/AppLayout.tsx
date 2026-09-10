@@ -24,10 +24,10 @@ export function AppLayout() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white">
-              CP
+              FP
             </div>
             <div>
-              <p className="text-sm font-semibold tracking-tight">Client Portal</p>
+              <p className="text-sm font-semibold tracking-tight">File Portal</p>
               <p className="text-xs text-ink-muted">Secure file sharing</p>
             </div>
           </div>
