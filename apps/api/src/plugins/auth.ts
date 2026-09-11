@@ -46,13 +46,18 @@ export const authPlugin = fp(async (app) => {
     const method = request.method.toUpperCase();
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return;
     if (request.url.startsWith('/health') || request.url.startsWith('/docs')) return;
-    const origin = request.headers.origin;
-    const expectedOrigin = app.config.PUBLIC_ORIGIN ?? app.config.CORS_ORIGIN;
-    if (
-      (app.config.NODE_ENV === 'production' && !origin) ||
-      (origin && origin !== expectedOrigin)
-    ) {
-      throw forbidden('Request origin is not allowed');
+    // In development the Vite proxy sits between the browser and the API, which
+    // can suppress or rewrite the Origin header. Strict origin enforcement only
+    // runs in production (and test, where inject() sets headers explicitly).
+    if (app.config.NODE_ENV !== 'development') {
+      const origin = request.headers.origin;
+      const expectedOrigin = app.config.PUBLIC_ORIGIN ?? app.config.CORS_ORIGIN;
+      if (
+        (app.config.NODE_ENV === 'production' && !origin) ||
+        (origin && origin !== expectedOrigin)
+      ) {
+        throw forbidden('Request origin is not allowed');
+      }
     }
 
     if (!request.user) return;
