@@ -32,8 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Viewer accounts are no longer seeded
 - Local Node/pnpm startup instructions replaced by Docker Compose deployment suitable
   for an existing development server and host-managed Nginx
+- MySQL data stored as a host bind-mount at `./data/mysql` instead of a named Docker volume
 - Origin header check now skipped in development (Vite proxy compatibility); enforced
   strictly in production and test environments
+
+### Fixed
+
+- `403 Request origin is not allowed` when accessing the app through the Vite dev-server
+  proxy (Nginx → Vite → API) even with correct `PUBLIC_ORIGIN`/`CORS_ORIGIN` values
+- `db-init` failing on fresh MySQL volume due to healthcheck race condition; fixed with
+  `start_period: 40s`, 30 retries, and a retry loop in the init command
+- S3 permission form blocked empty prefix (entire-bucket access) via a spurious
+  `required` attribute on the prefix input
 
 ### Security
 

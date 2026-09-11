@@ -1,6 +1,6 @@
 # File Portal
 
-**Version:** [0.2.0](CHANGELOG.md) (in progress — see Unreleased)
+**Version:** [0.2.0](CHANGELOG.md)
 
 Self-hosted, read-only S3 file portal for sharing files from an existing AWS S3 bucket with external clients.
 
@@ -9,11 +9,16 @@ S3 remains the single source of truth for files. MySQL stores only application s
 ## Features
 
 - Email/password auth with Argon2id and HttpOnly session cookies
-- ADMIN, MANAGER, and VIEWER roles with least-privilege UI/API access
-- Per-user S3 bucket + prefix permissions
+- **ADMIN**, **MANAGER**, and **VIEWER** roles with least-privilege UI/API access
+  - Admins: full control — users, permissions, audit logs, dashboard
+  - Managers: create/delete/manage Viewer users and their S3 permissions only
+  - Viewers: browse and download files within their assigned buckets/prefixes
+- Per-user S3 bucket + prefix permissions (leave prefix blank to grant full-bucket access)
 - Live S3 browsing via `ListObjectsV2` (no file sync/cache in MySQL)
-- Presigned download URLs
+- List and grid/block view toggle in the file browser (preference saved in browser)
+- Presigned download URLs — files never stream through the API; supports 2–3 GB objects
 - Admin user/permission management and audit logs
+- Dark mode with system-default detection and a manual toggle
 - Signed CSRF protection, layered rate limits, Zod validation, and development-only OpenAPI docs
 
 ## Prerequisites
@@ -138,7 +143,7 @@ pnpm test         # Authorization + unit tests
 pnpm test:security # Disposable MySQL + auth/role/proxy/S3 security integration tests
 pnpm build        # Build all packages
 docker compose up -d --build # Complete development stack
-docker compose down          # Stop it (database volume is retained)
+docker compose down          # Stop it (MySQL data is retained at ./data/mysql)
 ```
 
 ## Security model (summary)
