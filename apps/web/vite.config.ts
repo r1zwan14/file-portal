@@ -11,14 +11,18 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
     port: 5173,
+    allowedHosts: process.env.VITE_ALLOWED_HOSTS
+      ? process.env.VITE_ALLOWED_HOSTS.split(',').map((host) => host.trim())
+      : ['localhost', '127.0.0.1'],
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:4000',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:4000',
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:4000',
         changeOrigin: true,
       },
     },

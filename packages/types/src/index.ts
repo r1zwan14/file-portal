@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'VIEWER';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'VIEWER';
 
 export type AuditAction =
   | 'LOGIN'
@@ -9,6 +9,7 @@ export type AuditAction =
   | 'UPDATE_USER'
   | 'DISABLE_USER'
   | 'ENABLE_USER'
+  | 'DELETE_USER'
   | 'PASSWORD_RESET'
   | 'ADD_PERMISSION'
   | 'REMOVE_PERMISSION';

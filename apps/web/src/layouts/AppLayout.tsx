@@ -1,22 +1,32 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { FileText, LayoutDashboard, LogOut, ScrollText, Users } from 'lucide-react';
+import { FileText, LayoutDashboard, LogOut, Moon, ScrollText, Sun, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { Button } from '../components/ui';
 import { cn } from '../utils';
+import {
+  canAccessAdminDashboard,
+  canManageUsers,
+  canViewAuditLogs,
+} from '../utils/roles';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const { resolved, toggle, preference, setPreference } = useTheme();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'ADMIN';
 
-  const links = isAdmin
-    ? [
-        { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-        { to: '/files', label: 'Files', icon: FileText },
-        { to: '/admin/users', label: 'Users', icon: Users },
-        { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
-      ]
-    : [{ to: '/files', label: 'Files', icon: FileText }];
+  const links = [
+    ...(user && canAccessAdminDashboard(user.role)
+      ? [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true }]
+      : []),
+    { to: '/files', label: 'Files', icon: FileText },
+    ...(user && canManageUsers(user.role)
+      ? [{ to: '/admin/users', label: 'Users', icon: Users }]
+      : []),
+    ...(user && canViewAuditLogs(user.role)
+      ? [{ to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText }]
+      : []),
+  ];
 
   return (
     <div className="min-h-screen">
@@ -31,10 +41,29 @@ export function AppLayout() {
               <p className="text-xs text-ink-muted">Secure file sharing</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button
+              variant="ghost"
+              aria-label={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={
+                preference === 'system'
+                  ? `Theme: system (${resolved}). Click to override.`
+                  : `Theme: ${preference}. Right-click to use system.`
+              }
+              onClick={toggle}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setPreference('system');
+              }}
+            >
+              {resolved === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </Button>
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-ink-muted">{user?.email}</p>
+              <p className="text-xs text-ink-muted">
+                {user?.email}
+                {user?.role ? ` · ${user.role}` : ''}
+              </p>
             </div>
             <Button
               variant="secondary"

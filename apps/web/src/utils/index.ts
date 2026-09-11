@@ -24,6 +24,6 @@ export function formatDate(value: string): string {
 }
 
 export function getCsrfToken(): string | null {
-  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
+  const match = document.cookie.match(/(?:^|; )(?:__Host-)?csrf_token=([^;]*)/);
   return match ? decodeURIComponent(match[1]!) : null;
 }

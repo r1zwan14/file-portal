@@ -1,0 +1,17 @@
+services:
+  mysql-test:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: test-root
+      MYSQL_DATABASE: file_portal_test
+      MYSQL_USER: portal_test
+      MYSQL_PASSWORD: portal_test
+    ports:
+      - "127.0.0.1:3307:3306"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-ptest-root"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

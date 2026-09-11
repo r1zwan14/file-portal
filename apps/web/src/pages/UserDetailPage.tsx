@@ -1,16 +1,24 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UserRole } from '@portal/types';
 import { api } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
 import { Button, Card, Input, Label, PageHeader, Spinner } from '../components/ui';
+import { creatableRoles } from '../utils/roles';
 
 export function UserDetailPage() {
   const { id } = useParams();
   const userId = Number(id);
+  const { user: actor } = useAuth();
   const queryClient = useQueryClient();
+  const roleOptions = useMemo(
+    () => (actor ? creatableRoles(actor.role) : (['VIEWER'] as UserRole[])),
+    [actor],
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'ADMIN' | 'VIEWER'>('VIEWER');
+  const [role, setRole] = useState<UserRole>('VIEWER');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +76,11 @@ export function UserDetailPage() {
     resetMutation.mutate();
   }
 
+  const selectableRoles =
+    roleOptions.includes(role) || actor?.role === 'ADMIN'
+      ? Array.from(new Set([...roleOptions, role]))
+      : roleOptions;
+
   return (
     <div>
       <PageHeader
@@ -104,13 +117,20 @@ export function UserDetailPage() {
               <Label htmlFor="role">Role</Label>
               <select
                 id="role"
-                className="w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink"
                 value={role}
-                onChange={(e) => setRole(e.target.value as 'ADMIN' | 'VIEWER')}
+                onChange={(e) => setRole(e.target.value as UserRole)}
+                disabled={actor?.role === 'MANAGER'}
               >
-                <option value="VIEWER">VIEWER</option>
-                <option value="ADMIN">ADMIN</option>
+                {selectableRoles.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
               </select>
+              {actor?.role === 'MANAGER' ? (
+                <p className="mt-1 text-xs text-ink-muted">Managers can only manage viewer users.</p>
+              ) : null}
             </div>
             <Button type="submit" disabled={updateMutation.isPending}>
               Save changes

@@ -9,11 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Dark mode with light/dark toggle; default follows the browser/system preference (right-click theme button to reset to system)
+- **MANAGER** role: create/delete/manage **VIEWER** users and their S3 permissions only
+- User delete API/UI (`DELETE /api/admin/users/:id`)
+- HTTP site file for an existing host Nginx in front of the development stack
+- Hardened production API and unprivileged Nginx images with an internal-only API network
+- Fail-closed production configuration and idempotent initial-admin bootstrap
+- Disposable MySQL-backed security integration test suite
+- Single-command Docker Compose development stack for web, API, migrations, bootstrap,
+  and MySQL
+
 ### Changed
+
+- Admin dashboard and audit logs remain **ADMIN**-only
+- Viewers only see Files (no users, audit logs, or recent activity)
+- Managers see Files + Users; no dashboard/audit/recent activity
+- Development bootstrap now creates only one initial administrator; sample Manager and
+  Viewer accounts are no longer seeded
+- Local Node/pnpm startup instructions replaced by Docker Compose deployment suitable
+  for an existing development server and host-managed Nginx
 
 ### Fixed
 
 ### Security
+
+- Managers cannot create/promote/manage ADMIN or MANAGER accounts
+- Managers can grant only non-root S3 prefixes contained within their own permissions
+- Audit log endpoints require ADMIN
+- Session bearer tokens are SHA-256 hashed at rest; role, permission, password, disable,
+  delete, and logout changes invalidate affected sessions
+- Production uses signed `__Host-` cookies, signed constant-time CSRF checks, strict
+  Origin/CORS validation, explicit trusted-proxy CIDRs, HTTPS enforcement, CSP, no-store
+  API responses, bounded request/TTL settings, and layered rate limits
+- S3 pagination cursors are HMAC-bound to bucket/prefix, bucket discovery is
+  permission-filtered, download filenames are safely encoded, and AWS errors are sanitized
+- Swagger and third-party fonts are disabled/removed for production
+- Production dependencies upgraded with zero known high/critical audit findings
+- Multi-gigabyte downloads remain direct browser-to-S3 transfers and do not traverse
+  the API or development proxy
 
 ## [0.1.0] - 2026-09-10
 

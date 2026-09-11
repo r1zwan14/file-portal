@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.7
+FROM node:22-bookworm-slim AS base
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates openssl \
+ && rm -rf /var/lib/apt/lists/* \
+ && corepack enable \
+ && corepack prepare pnpm@9.15.9 --activate
+WORKDIR /app
+
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/config/package.json packages/config/
+COPY packages/types/package.json packages/types/
+COPY packages/validation/package.json packages/validation/
+RUN pnpm install --frozen-lockfile
+
+COPY apps apps
+COPY packages packages
+RUN pnpm build:packages \
+ && pnpm --filter @portal/api db:generate
+
+FROM base AS api
+EXPOSE 4000
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["pnpm", "--filter", "@portal/api", "dev:container"]
+
+FROM base AS web
+EXPOSE 5173
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["pnpm", "--filter", "@portal/web", "dev:container"]

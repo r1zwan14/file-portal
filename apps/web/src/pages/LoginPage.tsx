@@ -1,11 +1,15 @@
 import { FormEvent, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Moon, Sun } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { ApiError } from '../api/client';
 import { Button, Card, Input, Label } from '../components/ui';
+import { homePathForRole } from '../utils/roles';
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
+  const { resolved, toggle, setPreference } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -15,7 +19,7 @@ export function LoginPage() {
 
   if (!loading && user) {
     const from = (location.state as { from?: string } | null)?.from;
-    return <Navigate to={from || (user.role === 'ADMIN' ? '/admin' : '/files')} replace />;
+    return <Navigate to={from || homePathForRole(user.role)} replace />;
   }
 
   async function onSubmit(event: FormEvent) {
@@ -24,7 +28,7 @@ export function LoginPage() {
     setError(null);
     try {
       const me = await login(email, password);
-      navigate(me.user.role === 'ADMIN' ? '/admin' : '/files');
+      navigate(homePathForRole(me.user.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to sign in');
     } finally {
@@ -33,7 +37,20 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <div className="absolute top-4 right-4">
+        <Button
+          variant="ghost"
+          aria-label="Toggle theme"
+          onClick={toggle}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            setPreference('system');
+          }}
+        >
+          {resolved === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </Button>
+      </div>
       <Card className="w-full max-w-md">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-accent text-lg font-bold text-white">

@@ -1,7 +1,12 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import type { UserRole } from '@portal/types';
 import { useAuth } from '../hooks/useAuth';
 
-export function ProtectedRoute({ adminOnly = false }: { adminOnly?: boolean }) {
+export function ProtectedRoute({
+  roles,
+}: {
+  roles?: UserRole[];
+}) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -17,7 +22,7 @@ export function ProtectedRoute({ adminOnly = false }: { adminOnly?: boolean }) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (adminOnly && user.role !== 'ADMIN') {
+  if (roles && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 

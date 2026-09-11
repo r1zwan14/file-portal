@@ -9,7 +9,7 @@ export const passwordSchema = z
   .regex(/[A-Za-z]/, 'Password must contain a letter')
   .regex(/[0-9]/, 'Password must contain a number');
 
-export const roleSchema = z.enum(['ADMIN', 'VIEWER']);
+export const roleSchema = z.enum(['ADMIN', 'MANAGER', 'VIEWER']);
 
 export const loginSchema = z.object({
   email: emailSchema,
@@ -74,7 +74,7 @@ export const createPermissionSchema = z.object({
 
 export const listFilesQuerySchema = z.object({
   bucket: bucketNameSchema.optional(),
-  prefix: z.string().trim().max(1024).optional().default(''),
+  prefix: s3PrefixSchema.optional().default(''),
   cursor: z.string().trim().max(2048).optional(),
   search: z.string().trim().max(200).optional(),
 });

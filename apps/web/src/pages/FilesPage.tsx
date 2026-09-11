@@ -66,10 +66,10 @@ export function FilesPage() {
     return items;
   }, [prefix]);
 
-  if (!permissions.length && user?.role === 'VIEWER') {
+  if (!permissions.length && user?.role !== 'ADMIN') {
     return (
       <div>
-        <PageHeader title="Your Files" description={`Welcome, ${user.name}`} />
+        <PageHeader title="Your Files" description={`Welcome, ${user?.name}`} />
         <EmptyState
           title="No files available"
           description="You do not have any folder permissions yet. Contact an administrator."

@@ -9,7 +9,10 @@ export const filesRoutes: FastifyPluginAsync = async (app) => {
   const s3Service = new S3Service(app);
   const authz = new AuthorizationService(app);
 
-  app.get('/', async (request) => {
+  app.get(
+    '/',
+    { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } },
+    async (request) => {
     const user = requireAuth(request);
     const query = parseQuery(listFilesQuerySchema, request.query);
     const meta = getClientMeta(request);
@@ -21,9 +24,13 @@ export const filesRoutes: FastifyPluginAsync = async (app) => {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
     });
-  });
+    },
+  );
 
-  app.get('/download', async (request) => {
+  app.get(
+    '/download',
+    { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+    async (request) => {
     const user = requireAuth(request);
     const query = parseQuery(downloadQuerySchema, request.query);
     const meta = getClientMeta(request);
@@ -33,7 +40,8 @@ export const filesRoutes: FastifyPluginAsync = async (app) => {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
     });
-  });
+    },
+  );
 
   app.get('/roots', async (request) => {
     const user = requireAuth(request);
@@ -42,7 +50,8 @@ export const filesRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/buckets', async (request) => {
-    requireAuth(request);
-    return { buckets: app.config.allowedBuckets };
+    const user = requireAuth(request);
+    const permissions = await authz.resolveAccessiblePermissions(user);
+    return { buckets: [...new Set(permissions.map((permission) => permission.bucket))] };
   });
 };

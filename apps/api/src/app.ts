@@ -7,20 +7,40 @@ import { AppError } from './utils/errors.js';
 
 export async function buildApp() {
   const config = loadConfig();
+  const trustProxy = config.TRUST_PROXY
+    ? config.TRUST_PROXY.split(',').map((entry) => entry.trim())
+    : false;
 
   const app = Fastify({
+    trustProxy,
+    bodyLimit: config.BODY_LIMIT_BYTES,
     logger: {
       level: config.NODE_ENV === 'production' ? 'info' : 'debug',
       redact: {
         paths: [
           'req.headers.cookie',
           'req.headers.authorization',
+          'req.headers.x-csrf-token',
           'password',
           'passwordHash',
+          'sessionId',
+          'csrfToken',
+          'url',
+          'DATABASE_URL',
           'AWS_ACCESS_KEY_ID',
           'AWS_SECRET_ACCESS_KEY',
         ],
         remove: true,
+      },
+      serializers: {
+        req(request) {
+          return {
+            id: request.id,
+            method: request.method,
+            url: request.raw?.url?.split('?')[0],
+            remoteAddress: request.ip,
+          };
+        },
       },
     },
     genReqId: () => crypto.randomUUID(),
@@ -29,10 +49,21 @@ export async function buildApp() {
 
   app.decorate('config', config);
 
-  await registerPlugins(app);
-  await registerRoutes(app);
-
   app.setErrorHandler((error, request, reply) => {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'statusCode' in error &&
+      error.statusCode === 429
+    ) {
+      return reply.status(429).send({
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many requests. Please try again later.',
+        },
+      });
+    }
+
     if (error instanceof AppError) {
       return reply.status(error.statusCode).send({
         error: {
@@ -53,7 +84,10 @@ export async function buildApp() {
       });
     }
 
-    request.log.error({ err: error }, 'Unhandled error');
+    request.log.error(
+      { errorName: error instanceof Error ? error.name : 'UnknownError' },
+      'Unhandled error',
+    );
     return reply.status(500).send({
       error: {
         code: 'INTERNAL_ERROR',
@@ -61,6 +95,27 @@ export async function buildApp() {
       },
     });
   });
+
+  app.addHook('onRequest', async (request) => {
+    if (
+      config.FORCE_HTTPS &&
+      request.protocol !== 'https' &&
+      !request.url.startsWith('/health')
+    ) {
+      throw new AppError(403, 'FORBIDDEN', 'HTTPS is required');
+    }
+  });
+
+  app.addHook('onSend', async (request, reply, payload) => {
+    if (request.url.startsWith('/api/')) {
+      reply.header('Cache-Control', 'no-store');
+      reply.header('Pragma', 'no-cache');
+    }
+    return payload;
+  });
+
+  await registerPlugins(app);
+  await registerRoutes(app);
 
   return app;
 }

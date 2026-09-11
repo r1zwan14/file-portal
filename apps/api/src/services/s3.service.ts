@@ -9,6 +9,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { FastifyInstance } from 'fastify';
 import type { AuthUser } from '../types/auth-user.js';
 import { fileNameFromKey, folderNameFromPrefix, normalizePrefix } from '../utils/s3-path.js';
+import { decodeCursor, encodeCursor } from '../utils/cursor.js';
 import { AppError } from '../utils/errors.js';
 import { AuthorizationService } from './authorization.service.js';
 import { AuditService } from './audit.service.js';
@@ -60,6 +61,9 @@ export class S3Service {
 
     const bucket = this.authz.resolveDefaultBucket(permissions, input.bucket);
     const prefix = normalizePrefix(input.prefix ?? '');
+    const continuationToken = input.cursor
+      ? decodeCursor(input.cursor, { bucket, prefix }, this.app.config.CURSOR_SECRET)
+      : undefined;
 
     await this.authz.requirePrefixAccess(user, bucket, prefix);
 
@@ -73,7 +77,7 @@ export class S3Service {
           Bucket: bucket,
           Prefix: prefix,
           Delimiter: '/',
-          ContinuationToken: input.cursor,
+          ContinuationToken: continuationToken,
           MaxKeys: 200,
         }),
       );
@@ -117,11 +121,20 @@ export class S3Service {
         currentPrefix: prefix,
         folders: filtered.folders,
         files: filtered.files,
-        nextCursor: response.IsTruncated ? (response.NextContinuationToken ?? null) : null,
+        nextCursor:
+          response.IsTruncated && response.NextContinuationToken
+            ? encodeCursor(
+                { bucket, prefix, token: response.NextContinuationToken },
+                this.app.config.CURSOR_SECRET,
+              )
+            : null,
         isTruncated: Boolean(response.IsTruncated),
       };
     } catch (error) {
-      this.app.log.error({ err: error }, 'S3 list failed');
+      this.app.log.error(
+        { errorName: error instanceof Error ? error.name : 'UnknownError' },
+        'S3 list failed',
+      );
       throw new AppError(500, 'INTERNAL_ERROR', 'Failed to list files from storage');
     }
   }
@@ -217,7 +230,9 @@ export class S3Service {
       const command = new GetObjectCommand({
         Bucket: bucket,
         Key: input.key,
-        ResponseContentDisposition: `attachment; filename="${fileNameFromKey(input.key)}"`,
+        ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(
+          fileNameFromKey(input.key),
+        )}`,
       });
 
       const url = await getSignedUrl(this.client, command, {
@@ -235,7 +250,10 @@ export class S3Service {
 
       return { url };
     } catch (error) {
-      this.app.log.error({ err: error }, 'Failed to create download URL');
+      this.app.log.error(
+        { errorName: error instanceof Error ? error.name : 'UnknownError' },
+        'Failed to create download URL',
+      );
       throw new AppError(500, 'INTERNAL_ERROR', 'Failed to generate download URL');
     }
   }

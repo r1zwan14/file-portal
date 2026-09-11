@@ -3,6 +3,9 @@ dist
 build
 .env
 .env.local
+.env.production
+.env.test
+certs/
 *.log
 .DS_Store
 coverage

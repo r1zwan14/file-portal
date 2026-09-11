@@ -1,15 +1,19 @@
 {
   "name": "file-portal",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm -r --parallel run dev",
-    "dev:api": "pnpm --filter @portal/api dev",
-    "dev:web": "pnpm --filter @portal/web dev",
+    "build:packages": "pnpm --filter './packages/**' build",
+    "dev": "docker compose up --build",
+    "dev:up": "docker compose up -d --build --wait",
+    "dev:down": "docker compose down",
+    "dev:logs": "docker compose logs -f api web",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "test": "pnpm --filter @portal/api test",
+    "test:security": "bash scripts/test-security.sh",
     "db:migrate": "pnpm --filter @portal/api db:migrate",
+    "db:migrate:deploy": "pnpm --filter @portal/api db:migrate:deploy",
     "db:seed": "pnpm --filter @portal/api db:seed",
     "db:generate": "pnpm --filter @portal/api db:generate",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
@@ -21,5 +25,10 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@9.15.9"
+  "packageManager": "pnpm@9.15.9",
+  "pnpm": {
+    "overrides": {
+      "deepmerge-ts": "^8.0.0"
+    }
+  }
 }

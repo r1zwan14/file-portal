@@ -1,7 +1,9 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UserRole } from '@portal/types';
 import { api } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
 import {
   Badge,
   Button,
@@ -13,16 +15,22 @@ import {
   Spinner,
 } from '../components/ui';
 import { formatDate } from '../utils';
+import { creatableRoles } from '../utils/roles';
 
 export function UsersPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const roleOptions = useMemo(
+    () => (user ? creatableRoles(user.role) : (['VIEWER'] as UserRole[])),
+    [user],
+  );
   const [q, setQ] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'VIEWER' as 'ADMIN' | 'VIEWER',
+    role: 'VIEWER' as UserRole,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +57,14 @@ export function UsersPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.deleteUser(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
   function onCreate(event: FormEvent) {
     event.preventDefault();
     setError(null);
@@ -59,7 +75,11 @@ export function UsersPage() {
     <div>
       <PageHeader
         title="Users"
-        description="Create accounts and manage access."
+        description={
+          user?.role === 'MANAGER'
+            ? 'Create and manage viewer accounts and their file permissions.'
+            : 'Create accounts and manage access.'
+        }
         actions={
           <Button onClick={() => setShowCreate((v) => !v)}>
             {showCreate ? 'Close' : 'Create user'}
@@ -111,14 +131,17 @@ export function UsersPage() {
               <Label htmlFor="role">Role</Label>
               <select
                 id="role"
-                className="w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink"
                 value={form.role}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, role: e.target.value as 'ADMIN' | 'VIEWER' }))
+                  setForm((f) => ({ ...f, role: e.target.value as UserRole }))
                 }
               >
-                <option value="VIEWER">VIEWER</option>
-                <option value="ADMIN">ADMIN</option>
+                {roleOptions.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
               </select>
             </div>
             {error ? <p className="text-sm text-danger md:col-span-2">{error}</p> : null}
@@ -151,28 +174,28 @@ export function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {usersQuery.data.items.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-4 py-3 font-medium">{user.name}</td>
-                  <td className="px-4 py-3">{user.email}</td>
+              {usersQuery.data.items.map((row) => (
+                <tr key={row.id}>
+                  <td className="px-4 py-3 font-medium">{row.name}</td>
+                  <td className="px-4 py-3">{row.email}</td>
                   <td className="px-4 py-3">
-                    <Badge>{user.role}</Badge>
+                    <Badge>{row.role}</Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge tone={user.isActive ? 'success' : 'danger'}>
-                      {user.isActive ? 'Active' : 'Disabled'}
+                    <Badge tone={row.isActive ? 'success' : 'danger'}>
+                      {row.isActive ? 'Active' : 'Disabled'}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3">{user.permissions?.length ?? 0}</td>
-                  <td className="px-4 py-3 text-ink-muted">{formatDate(user.createdAt)}</td>
+                  <td className="px-4 py-3">{row.permissions?.length ?? 0}</td>
+                  <td className="px-4 py-3 text-ink-muted">{formatDate(row.createdAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
-                      <Link className="text-accent hover:underline" to={`/admin/users/${user.id}`}>
+                      <Link className="text-accent hover:underline" to={`/admin/users/${row.id}`}>
                         Edit
                       </Link>
                       <Link
                         className="text-accent hover:underline"
-                        to={`/admin/users/${user.id}/permissions`}
+                        to={`/admin/users/${row.id}/permissions`}
                       >
                         Permissions
                       </Link>
@@ -181,10 +204,26 @@ export function UsersPage() {
                         className="text-ink-muted hover:text-ink"
                         disabled={toggleMutation.isPending}
                         onClick={() =>
-                          toggleMutation.mutate({ id: user.id, enable: !user.isActive })
+                          toggleMutation.mutate({ id: row.id, enable: !row.isActive })
                         }
                       >
-                        {user.isActive ? 'Disable' : 'Enable'}
+                        {row.isActive ? 'Disable' : 'Enable'}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-danger hover:underline"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete ${row.email}? This cannot be undone.`,
+                            )
+                          ) {
+                            deleteMutation.mutate(row.id);
+                          }
+                        }}
+                      >
+                        Delete
                       </button>
                     </div>
                   </td>
@@ -194,6 +233,7 @@ export function UsersPage() {
           </table>
         </div>
       ) : null}
+      {error && !showCreate ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
     </div>
   );
 }

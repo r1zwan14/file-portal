@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1.7
+ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-bookworm-slim AS build
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openssl \
+ && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY apps/api/package.json apps/api/
+COPY packages/config/package.json packages/config/
+COPY packages/types/package.json packages/types/
+COPY packages/validation/package.json packages/validation/
+RUN pnpm install --frozen-lockfile
+COPY apps/api apps/api
+COPY packages packages
+ENV DATABASE_URL=mysql://build:build@127.0.0.1:3306/build
+RUN pnpm build:packages \
+ && pnpm --filter @portal/api db:generate \
+ && pnpm --filter @portal/api build \
+ && pnpm --filter @portal/api deploy --prod /prod/api \
+ && cd /prod/api \
+ && ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
+
+FROM node:${NODE_VERSION}-bookworm-slim AS runtime
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates openssl \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /prod/api ./
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+COPY docker/api-entrypoint.sh /usr/local/bin/api-entrypoint
+RUN chmod 0555 /usr/local/bin/api-entrypoint && chown -R node:node /app
+USER node
+EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+ENTRYPOINT ["api-entrypoint"]

@@ -1,27 +1,37 @@
 import fp from 'fastify-plugin';
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import { unauthorized, forbidden } from '../utils/errors.js';
+import type { FastifyReply } from 'fastify';
+import { timingSafeEqual } from 'node:crypto';
+import { forbidden } from '../utils/errors.js';
 import { AuthService } from '../services/auth.service.js';
+import {
+  requireAuth,
+  requireAdmin,
+  requireManagerOrAdmin,
+} from '../utils/roles.js';
 
 const SESSION_COOKIE = 'session_id';
 const CSRF_COOKIE = 'csrf_token';
+const SECURE_SESSION_COOKIE = '__Host-session_id';
+const SECURE_CSRF_COOKIE = '__Host-csrf_token';
 
-export { SESSION_COOKIE, CSRF_COOKIE };
+export { SESSION_COOKIE, CSRF_COOKIE, requireAuth, requireAdmin, requireManagerOrAdmin };
 
 export const authPlugin = fp(async (app) => {
   app.decorateRequest('user', null);
   app.decorateRequest('sessionId', null);
 
   app.addHook('onRequest', async (request) => {
-    const sessionId = request.cookies[SESSION_COOKIE];
-    if (!sessionId) {
+    const cookieName = app.config.COOKIE_SECURE ? SECURE_SESSION_COOKIE : SESSION_COOKIE;
+    const signedSession = request.cookies[cookieName];
+    const session = signedSession ? request.unsignCookie(signedSession) : null;
+    if (!session?.valid) {
       request.user = null;
       request.sessionId = null;
       return;
     }
 
     const authService = new AuthService(app);
-    const user = await authService.resolveSession(sessionId);
+    const user = await authService.resolveSession(session.value);
     if (!user) {
       request.user = null;
       request.sessionId = null;
@@ -29,44 +39,41 @@ export const authPlugin = fp(async (app) => {
     }
 
     request.user = user;
-    request.sessionId = sessionId;
+    request.sessionId = session.value;
   });
 
-  // CSRF: double-submit cookie pattern for state-changing methods.
   app.addHook('preHandler', async (request) => {
     const method = request.method.toUpperCase();
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return;
     if (request.url.startsWith('/health') || request.url.startsWith('/docs')) return;
-    // Login establishes cookies; CSRF enforced after authentication exists.
-    if (request.url === '/api/auth/login') return;
+    const origin = request.headers.origin;
+    const expectedOrigin = app.config.PUBLIC_ORIGIN ?? app.config.CORS_ORIGIN;
+    if (
+      (app.config.NODE_ENV === 'production' && !origin) ||
+      (origin && origin !== expectedOrigin)
+    ) {
+      throw forbidden('Request origin is not allowed');
+    }
 
     if (!request.user) return;
 
-    const csrfCookie = request.cookies[CSRF_COOKIE];
+    const cookieName = app.config.COOKIE_SECURE ? SECURE_CSRF_COOKIE : CSRF_COOKIE;
+    const csrfCookie = request.cookies[cookieName];
     const csrfHeader = request.headers['x-csrf-token'];
-    if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+    const csrfSignature = csrfCookie ? request.unsignCookie(csrfCookie) : null;
+    const cookieBuffer = Buffer.from(csrfCookie ?? '');
+    const headerBuffer = Buffer.from(
+      typeof csrfHeader === 'string' ? csrfHeader : '',
+    );
+    if (
+      !csrfSignature?.valid ||
+      cookieBuffer.length !== headerBuffer.length ||
+      !timingSafeEqual(cookieBuffer, headerBuffer)
+    ) {
       throw forbidden('CSRF token mismatch');
     }
   });
 });
-
-export function requireAuth(request: FastifyRequest) {
-  if (!request.user || !request.sessionId) {
-    throw unauthorized();
-  }
-  if (!request.user.isActive) {
-    throw unauthorized('Account is disabled');
-  }
-  return request.user;
-}
-
-export function requireAdmin(request: FastifyRequest) {
-  const user = requireAuth(request);
-  if (user.role !== 'ADMIN') {
-    throw forbidden();
-  }
-  return user;
-}
 
 export function setSessionCookies(
   reply: FastifyReply,
@@ -80,20 +87,25 @@ export function setSessionCookies(
     sameSite: 'lax' as const,
     secure,
     maxAge: maxAgeSeconds,
+    signed: true,
   };
 
-  reply.setCookie(SESSION_COOKIE, sessionId, {
+  const sessionCookie = secure ? SECURE_SESSION_COOKIE : SESSION_COOKIE;
+  const csrfCookie = secure ? SECURE_CSRF_COOKIE : CSRF_COOKIE;
+  reply.setCookie(sessionCookie, sessionId, {
     ...common,
     httpOnly: true,
   });
 
-  reply.setCookie(CSRF_COOKIE, csrfToken, {
+  reply.setCookie(csrfCookie, csrfToken, {
     ...common,
     httpOnly: false,
   });
 }
 
 export function clearSessionCookies(reply: FastifyReply, secure: boolean) {
-  reply.clearCookie(SESSION_COOKIE, { path: '/', secure, sameSite: 'lax' });
-  reply.clearCookie(CSRF_COOKIE, { path: '/', secure, sameSite: 'lax' });
+  const sessionCookie = secure ? SECURE_SESSION_COOKIE : SESSION_COOKIE;
+  const csrfCookie = secure ? SECURE_CSRF_COOKIE : CSRF_COOKIE;
+  reply.clearCookie(sessionCookie, { path: '/', secure, sameSite: 'lax' });
+  reply.clearCookie(csrfCookie, { path: '/', secure, sameSite: 'lax' });
 }

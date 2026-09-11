@@ -14,6 +14,8 @@ describe('authorization canAccessObject', () => {
   it('denies client-b and internal keys', () => {
     expect(canAccessObject(clientA, EXAMPLE_BUCKET, 'client-b/file.pdf')).toBe(false);
     expect(canAccessObject(clientA, EXAMPLE_BUCKET, 'internal/file.pdf')).toBe(false);
+    expect(canAccessObject(clientA, EXAMPLE_BUCKET, 'client-ab/file.pdf')).toBe(false);
+    expect(canAccessObject(clientA, EXAMPLE_BUCKET, 'client-a-extra/file.pdf')).toBe(false);
   });
 
   it('denies other buckets', () => {

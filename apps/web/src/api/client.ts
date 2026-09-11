@@ -111,7 +111,7 @@ export const api = {
     name: string;
     email: string;
     password: string;
-    role: 'ADMIN' | 'VIEWER';
+    role: 'ADMIN' | 'MANAGER' | 'VIEWER';
     isActive?: boolean;
   }) {
     return request<UserPublic>('/api/admin/users', {
@@ -121,12 +121,20 @@ export const api = {
   },
   updateUser(
     id: number,
-    body: Partial<{ name: string; email: string; role: 'ADMIN' | 'VIEWER'; isActive: boolean }>,
+    body: Partial<{
+      name: string;
+      email: string;
+      role: 'ADMIN' | 'MANAGER' | 'VIEWER';
+      isActive: boolean;
+    }>,
   ) {
     return request<UserPublic>(`/api/admin/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     });
+  },
+  deleteUser(id: number) {
+    return request<{ ok: boolean }>(`/api/admin/users/${id}`, { method: 'DELETE' });
   },
   disableUser(id: number) {
     return request<UserPublic>(`/api/admin/users/${id}/disable`, { method: 'POST' });

@@ -56,6 +56,7 @@ export function AuditLogsPage() {
             'UPDATE_USER',
             'DISABLE_USER',
             'ENABLE_USER',
+            'DELETE_USER',
             'PASSWORD_RESET',
             'ADD_PERMISSION',
             'REMOVE_PERMISSION',

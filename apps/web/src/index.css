@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
   --color-ink: #0f1720;
   --color-ink-muted: #5b6b7c;
   --color-surface: #f4f7fa;
@@ -12,6 +12,23 @@
   --color-accent-soft: #d8f3e7;
   --color-danger: #b42318;
   --color-warn: #b54708;
+}
+
+html {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-ink: #e8eef5;
+  --color-ink-muted: #9aa8b8;
+  --color-surface: #0b1220;
+  --color-panel: #121a27;
+  --color-line: #243041;
+  --color-accent: #3ecf8e;
+  --color-accent-soft: #163528;
+  --color-danger: #f97066;
+  --color-warn: #fdb022;
 }
 
 * {
@@ -29,7 +46,8 @@ body {
   font-family: var(--font-sans);
   color: var(--color-ink);
   background:
-    radial-gradient(1200px 600px at 10% -10%, #dceef8 0%, transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, #dff5eb 0%, transparent 45%),
+    radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--color-accent) 12%, transparent) 0%, transparent 45%),
     var(--color-surface);
+  transition: background-color 160ms ease, color 160ms ease;
 }

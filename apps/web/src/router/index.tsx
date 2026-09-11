@@ -9,12 +9,13 @@ import { UserDetailPage } from '../pages/UserDetailPage';
 import { UserPermissionsPage } from '../pages/UserPermissionsPage';
 import { AuditLogsPage } from '../pages/AuditLogsPage';
 import { useAuth } from '../hooks/useAuth';
+import { homePathForRole } from '../utils/roles';
 
 function HomeRedirect() {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/files'} replace />;
+  return <Navigate to={homePathForRole(user.role)} replace />;
 }
 
 export function AppRouter() {
@@ -25,12 +26,14 @@ export function AppRouter() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/files/*" element={<FilesPage />} />
-          <Route element={<ProtectedRoute adminOnly />}>
+          <Route element={<ProtectedRoute roles={['ADMIN']} />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['ADMIN', 'MANAGER']} />}>
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/users/:id" element={<UserDetailPage />} />
             <Route path="/admin/users/:id/permissions" element={<UserPermissionsPage />} />
-            <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
           </Route>
         </Route>
       </Route>
