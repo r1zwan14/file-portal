@@ -97,13 +97,15 @@ export function UserPermissionsPage() {
             </select>
           </div>
           <div>
-            <Label htmlFor="prefix">Prefix</Label>
+            <Label htmlFor="prefix">
+              Prefix{' '}
+              <span className="text-xs font-normal text-ink-muted">(leave blank for entire bucket)</span>
+            </Label>
             <Input
               id="prefix"
-              placeholder="client-a/"
+              placeholder="folder/ — or leave blank for full bucket"
               value={prefix}
               onChange={(e) => setPrefix(e.target.value)}
-              required
             />
           </div>
           <div className="flex items-end">
@@ -140,7 +142,11 @@ export function UserPermissionsPage() {
               {permissionsQuery.data.items.map((permission) => (
                 <tr key={permission.id}>
                   <td className="px-4 py-3 font-mono text-xs">{permission.bucket}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{permission.prefix || '(bucket root)'}</td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {permission.prefix || (
+                      <span className="italic text-ink-muted">entire bucket</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <Button
                       variant="danger"
