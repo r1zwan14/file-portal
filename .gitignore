@@ -17,3 +17,4 @@ apps/api/dist
 .vscode
 .idea
 prompt.md
+\n# MySQL bind-mount data\ndata/

@@ -8,16 +8,17 @@ services:
       MYSQL_USER: portal
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-portal}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./data/mysql:/var/lib/mysql
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent",
         ]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
+      start_period: 40s
 
   db-init:
     build:
@@ -31,7 +32,18 @@ services:
     command:
       - sh
       - -c
-      - pnpm --filter @portal/api db:migrate:deploy && pnpm --filter @portal/api exec tsx src/scripts/bootstrap-admin.ts
+      - |
+        attempt=0
+        until pnpm --filter @portal/api db:migrate:deploy; do
+          attempt=$$((attempt + 1))
+          if [ "$$attempt" -ge 30 ]; then
+            echo "Database did not become ready"
+            exit 1
+          fi
+          echo "Database is not ready; retrying ($$attempt/30)"
+          sleep 2
+        done
+        pnpm --filter @portal/api exec tsx src/scripts/bootstrap-admin.ts
     depends_on:
       mysql:
         condition: service_healthy
@@ -68,5 +80,4 @@ services:
       - "${DEV_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-5173}:5173"
     restart: unless-stopped
 
-volumes:
-  mysql_data:
+# mysql data is stored at ./data/mysql on the host (bind mount)
