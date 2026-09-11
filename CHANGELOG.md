@@ -7,17 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-11
+
 ### Added
 
-- Dark mode with light/dark toggle; default follows the browser/system preference (right-click theme button to reset to system)
+- Dark mode with light/dark toggle; default follows the browser/system preference
 - **MANAGER** role: create/delete/manage **VIEWER** users and their S3 permissions only
 - User delete API/UI (`DELETE /api/admin/users/:id`)
+- Grid/block view for the file browser with a list/grid toggle (preference persisted to `localStorage`)
+- Empty prefix support on permissions — leave prefix blank to grant a viewer access to an entire bucket
 - HTTP site file for an existing host Nginx in front of the development stack
 - Hardened production API and unprivileged Nginx images with an internal-only API network
 - Fail-closed production configuration and idempotent initial-admin bootstrap
 - Disposable MySQL-backed security integration test suite
-- Single-command Docker Compose development stack for web, API, migrations, bootstrap,
-  and MySQL
+- Single-command Docker Compose development stack for web, API, migrations, bootstrap, and MySQL
+- MySQL data bind-mounted to `./data/mysql` on the host for easy backup and persistence
 
 ### Changed
 
@@ -28,8 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Viewer accounts are no longer seeded
 - Local Node/pnpm startup instructions replaced by Docker Compose deployment suitable
   for an existing development server and host-managed Nginx
-
-### Fixed
+- Origin header check now skipped in development (Vite proxy compatibility); enforced
+  strictly in production and test environments
 
 ### Security
 
