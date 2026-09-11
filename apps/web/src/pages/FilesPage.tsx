@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ChevronRight, Download, FileIcon, Folder, Search } from 'lucide-react';
+import { ChevronRight, Download, FileIcon, Folder, LayoutGrid, LayoutList, Search } from 'lucide-react';
 import { api } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -14,10 +14,29 @@ import {
 } from '../components/ui';
 import { formatBytes, formatDate } from '../utils';
 
+type ViewMode = 'list' | 'grid';
+
+function useViewMode(): [ViewMode, (v: ViewMode) => void] {
+  const [view, setViewState] = useState<ViewMode>(() => {
+    try {
+      const stored = localStorage.getItem('fp:viewMode');
+      return stored === 'grid' ? 'grid' : 'list';
+    } catch {
+      return 'list';
+    }
+  });
+  function setView(v: ViewMode) {
+    setViewState(v);
+    try { localStorage.setItem('fp:viewMode', v); } catch { /* ignore */ }
+  }
+  return [view, setView];
+}
+
 export function FilesPage() {
   const { user, permissions } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const [view, setView] = useViewMode();
   const bucket = params.get('bucket') ?? undefined;
   const prefix = params.get('prefix') ?? '';
   const [search, setSearch] = useState(params.get('search') ?? '');
@@ -138,6 +157,25 @@ export function FilesPage() {
         <Button type="submit" variant="secondary">
           Search
         </Button>
+        {/* View toggle */}
+        <div className="flex items-center rounded-lg border border-line bg-panel p-0.5">
+          <button
+            type="button"
+            title="List view"
+            onClick={() => setView('list')}
+            className={`rounded-md p-1.5 transition ${view === 'list' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+          >
+            <LayoutList className="size-4" />
+          </button>
+          <button
+            type="button"
+            title="Grid view"
+            onClick={() => setView('grid')}
+            className={`rounded-md p-1.5 transition ${view === 'grid' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+        </div>
       </form>
 
       <div className="mb-3 flex flex-wrap items-center gap-1 text-sm text-ink-muted">
@@ -171,69 +209,140 @@ export function FilesPage() {
       ) : null}
 
       {listQuery.data ? (
-        <div className="overflow-hidden rounded-xl border border-line bg-panel">
+        <>
           {!listQuery.data.folders.length && !listQuery.data.files.length ? (
-            <div className="p-6">
-              <EmptyState
-                title={activeSearch ? 'No search results' : 'No files'}
-                description={
-                  activeSearch
-                    ? 'Try a different search term.'
-                    : 'This folder is empty.'
-                }
-              />
+            <EmptyState
+              title={activeSearch ? 'No search results' : 'No files'}
+              description={activeSearch ? 'Try a different search term.' : 'This folder is empty.'}
+            />
+          ) : view === 'list' ? (
+            <div className="overflow-hidden rounded-xl border border-line bg-panel">
+              <ul className="divide-y divide-line">
+                {listQuery.data.folders.map((folder) => (
+                  <li key={folder.prefix}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface"
+                      onClick={() => {
+                        setActiveSearch('');
+                        setSearch('');
+                        const next = new URLSearchParams();
+                        if (bucket) next.set('bucket', bucket);
+                        next.set('prefix', folder.prefix);
+                        setParams(next);
+                      }}
+                    >
+                      <Folder className="size-5 shrink-0 text-accent" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{folder.name}</p>
+                        <p className="text-xs text-ink-muted">Folder</p>
+                      </div>
+                      <ChevronRight className="size-4 shrink-0 text-ink-muted" />
+                    </button>
+                  </li>
+                ))}
+                {listQuery.data.files.map((file) => (
+                  <li key={file.key} className="flex items-center gap-3 px-4 py-3">
+                    <FileIcon className="size-5 shrink-0 text-ink-muted" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{file.name}</p>
+                      <p className="text-xs text-ink-muted">
+                        {formatBytes(file.size)} · {formatDate(file.lastModified)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      disabled={downloadMutation.isPending}
+                      onClick={() => downloadMutation.mutate(file.key)}
+                    >
+                      <Download className="size-4" />
+                      Download
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              {listQuery.data.nextCursor ? (
+                <div className="border-t border-line px-4 py-3">
+                  <Badge>More results available — refine your prefix or search</Badge>
+                </div>
+              ) : null}
             </div>
           ) : (
-            <ul className="divide-y divide-line">
-              {listQuery.data.folders.map((folder) => (
-                <li key={folder.prefix}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface"
-                    onClick={() => {
-                      setActiveSearch('');
-                      setSearch('');
-                      const next = new URLSearchParams();
-                      if (bucket) next.set('bucket', bucket);
-                      next.set('prefix', folder.prefix);
-                      setParams(next);
-                    }}
-                  >
-                    <Folder className="size-5 text-accent" />
-                    <div>
-                      <p className="font-medium">{folder.name}</p>
-                      <p className="text-xs text-ink-muted">Folder</p>
-                    </div>
-                  </button>
-                </li>
-              ))}
-              {listQuery.data.files.map((file) => (
-                <li key={file.key} className="flex items-center gap-3 px-4 py-3">
-                  <FileIcon className="size-5 text-ink-muted" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{file.name}</p>
-                    <p className="text-xs text-ink-muted">
-                      {formatBytes(file.size)} · {formatDate(file.lastModified)}
-                    </p>
+            /* ── Grid / block view ── */
+            <div>
+              {listQuery.data.folders.length > 0 && (
+                <>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
+                    Folders
+                  </p>
+                  <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {listQuery.data.folders.map((folder) => (
+                      <button
+                        key={folder.prefix}
+                        type="button"
+                        onClick={() => {
+                          setActiveSearch('');
+                          setSearch('');
+                          const next = new URLSearchParams();
+                          if (bucket) next.set('bucket', bucket);
+                          next.set('prefix', folder.prefix);
+                          setParams(next);
+                        }}
+                        className="group flex flex-col items-center gap-2 rounded-xl border border-line bg-panel p-4 text-center transition hover:border-accent/40 hover:bg-surface hover:shadow-sm"
+                      >
+                        <Folder className="size-10 text-accent transition group-hover:scale-105" />
+                        <p className="w-full truncate text-sm font-medium leading-tight">
+                          {folder.name}
+                        </p>
+                      </button>
+                    ))}
                   </div>
-                  <Button
-                    variant="secondary"
-                    disabled={downloadMutation.isPending}
-                    onClick={() => downloadMutation.mutate(file.key)}
-                  >
-                    <Download className="size-4" />
-                    Download
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {listQuery.data.nextCursor ? (
-            <div className="border-t border-line px-4 py-3">
-              <Badge>More results available — refine your prefix or search</Badge>
+                </>
+              )}
+
+              {listQuery.data.files.length > 0 && (
+                <>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
+                    Files
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {listQuery.data.files.map((file) => (
+                      <div
+                        key={file.key}
+                        className="flex flex-col rounded-xl border border-line bg-panel p-4 transition hover:shadow-sm"
+                      >
+                        <FileIcon className="mb-3 size-10 shrink-0 text-ink-muted" />
+                        <p className="mb-1 w-full truncate text-sm font-medium leading-tight" title={file.name}>
+                          {file.name}
+                        </p>
+                        <p className="mb-3 text-xs text-ink-muted">
+                          {formatBytes(file.size)}
+                          <br />
+                          {formatDate(file.lastModified)}
+                        </p>
+                        <Button
+                          variant="secondary"
+                          className="mt-auto w-full"
+                          disabled={downloadMutation.isPending}
+                          onClick={() => downloadMutation.mutate(file.key)}
+                        >
+                          <Download className="size-3.5" />
+                          Download
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {listQuery.data.nextCursor ? (
+                <div className="mt-4">
+                  <Badge>More results available — refine your prefix or search</Badge>
+                </div>
+              ) : null}
             </div>
-          ) : null}
-        </div>
+          )}
+        </>
       ) : null}
 
       {user?.role === 'VIEWER' && !bucket ? (
